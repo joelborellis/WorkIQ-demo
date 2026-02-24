@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/backend && uv sync 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/backend && uv run python -c \"from app.main import app; print\\('App imports OK'\\)\" 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/backend && uv run python -c \"\nimport importlib\nfor mod in ['app.config','app.models.copilot','app.services.auth','app.services.copilot','app.dependencies','app.routes.copilot']:\n    importlib.import_module\\(mod\\)\nprint\\('All modules import OK'\\)\n\" 2>&1)",
+      "Bash(node --version && npm --version 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo && printf 'y\\\\n' | npm create vite@latest frontend -- --template react-ts 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/frontend && npm install && npm install @azure/msal-browser @azure/msal-react 2>&1)",
+      "Bash(head:*)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/frontend && npx tsc --noEmit 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/frontend && npm run build 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/backend && uv run python -c \"\nfrom app.config import get_settings\nfrom app.services.auth import AuthService\nfrom app.services.copilot import CopilotService\nfrom app.routes.auth import router as auth_router\nfrom app.routes.copilot import router as copilot_router\nfrom app.dependencies import get_current_user, get_graph_token\nprint\\('All backend modules import OK'\\)\n\" 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/frontend && npm uninstall @azure/msal-browser @azure/msal-react 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/backend && uv run python -c \"\nimport importlib\nfor mod in ['app.config','app.models.copilot','app.services.auth','app.services.copilot','app.dependencies','app.routes.auth','app.routes.copilot']:\n    importlib.import_module\\(mod\\)\nprint\\('All backend modules import OK'\\)\n\" 2>&1)",
+      "Bash(C:/Projects/2026/WorkIQ-demo/backend/.venv/Scripts/pip.exe install:*)",
+      "Bash(\"C:/Projects/2026/WorkIQ-demo/backend/.venv/Scripts/python.exe\":*)",
+      "Bash(cd:*)",
+      "Bash(tail:*)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/backend && python -c \"\nfrom app.services.retrieval import RetrievalService\nfrom app.routes.copilot import router\nfrom app.main import create_app\nprint\\('All imports OK'\\)\nprint\\('Routes:', [r.path for r in router.routes]\\)\n\" 2>&1)",
+      "Bash(cd /c/Projects/2026/WorkIQ-demo/backend && uv run python -c \"\nfrom app.services.retrieval import RetrievalService\nfrom app.routes.copilot import router\nprint\\('All imports OK'\\)\nprint\\('Routes:', [r.path for r in router.routes]\\)\n\" 2>&1)",
+      "Bash(cd C:/Projects/2026/WorkIQ-demo/frontend && npm run build 2>&1)"
+    ]
+  }
+}
