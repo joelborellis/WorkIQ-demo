@@ -1,12 +1,14 @@
 # What Microsoft's Work IQ Actually Is — And Why It's the Most Important Thing in Enterprise AI Right Now
 
-*Microsoft has built a semantic intelligence layer on top of M365 that most people selling and evaluating Copilot don't fully understand. This series maps it.*
+*Microsoft has built a semantic intelligence layer on top of M365 that most people selling and evaluating Copilot don't fully understand. This article maps it.*
 
 Every major AI lab is racing to build the smartest model. But here's what that race is obscuring: the frontier models are all remarkably good. They can reason, synthesize, and generate at a level that would have seemed impossible two years ago — and the gaps between them are narrowing fast. So if the model isn't the bottleneck anymore, what is?
 
 The answer is something far less glamorous but far more consequential: the data your model can actually see, and how that data has been organized and made *meaningful* before the model ever touches it. For years, Microsoft has given developers and enterprises API access to the raw signals of work — emails, calendars, Teams conversations, SharePoint sites, OneDrive files — through the Microsoft Graph. That access was powerful, but it was just data: structured endpoints returning documents and metadata.
 
 What Microsoft has been building more recently is something fundamentally different. They've layered a semantic model on top of that raw data — a continuously updated understanding of not just *what* exists across your Microsoft 365 environment, but how it all relates: which people connect to which projects, which conversations led to which decisions, which documents matter right now and why. Microsoft calls this intelligence layer Work IQ, and it represents their bet that in a world where every enterprise will have AI agents operating on its behalf, the real advantage isn't the agent's reasoning ability — it's the richness and structure of the context it reasons over.
+
+Work IQ is one of three intelligence layers Microsoft is building under the broader umbrella of **Microsoft IQ**. Fabric IQ addresses the semantic gap in enterprise data — mapping raw data to business meaning through ontologies and graph-based reasoning inside Microsoft Fabric. Foundry IQ solves the grounding problem — providing unified retrieval across data sources with automated indexing and security controls baked in. Together, these three layers form what Microsoft envisions as a unified context layer for enterprise AI: Work IQ for the knowledge worker's daily environment, Fabric IQ for the organization's data estate, and Foundry IQ for the developer building on top of both. This article focuses on Work IQ — the layer closest to the user experience and the one most immediately relevant to anyone evaluating or deploying M365 Copilot today.
 
 ---
 
@@ -16,7 +18,7 @@ If that agent is built on the Microsoft Graph API, it has work to do. It needs t
 
 Now route that same question through Microsoft's semantic layer — via the Copilot Chat API or a Work IQ MCP server. The agent isn't querying raw endpoints anymore. It's tapping into a layer that has already done the work of connecting the dots. It knows that Project Aurora spans a specific set of documents, a Teams channel, a series of recent meetings, and a handful of key people — and it surfaces what's most relevant based on that web of relationships. The data that comes back isn't just data. It arrives with context already woven in.
 
-That distinction — between retrieving information and receiving understanding — is the fault line this series will explore.
+That distinction — between retrieving information and receiving understanding — is the fault line that matters most for anyone building or evaluating AI on M365.
 
 ## Under the Hood: How the Intelligence Layer Actually Works
 
@@ -64,7 +66,7 @@ The evidence is already in the field. A Fortune 500 insurance company ran a 90-d
 
 Salesforce's answer is a pre-wired ontology built for the Salesforce garden — extraordinarily effective within that perimeter, and opaque beyond it. Microsoft's bet is horizontal: Work IQ as the semantic layer across the full knowledge worker data estate — email, Teams, SharePoint, calendar, files. Not CRM-shaped intelligence. Organization-shaped intelligence.
 
-Understanding how that layer is constructed — which parts are accessible, at what cost, and with what tradeoffs — matters for anyone building enterprise AI solutions, evaluating them, or selling them. Each article in this series will be accompanied by working demos, so the architecture isn't just described — it's shown.
+Understanding how that layer is constructed — which parts are accessible, at what cost, and with what tradeoffs — matters for anyone building enterprise AI solutions, evaluating them, or selling them.
 
 ## The Architectural Choice
 
@@ -76,12 +78,20 @@ On the other end, you lean into the intelligence layer — routing queries throu
 
 Between these extremes sit approaches that try to balance both — tapping into the semantic index for context while preserving your agent's autonomy over how that context is used.
 
-The table above isn't just a reference — it's the map for this series. Each row represents a distinct architectural choice, and each article will be accompanied by a working demo built against that layer: what it takes to connect, what the query looks like, what comes back, and what you give up or gain in intelligence versus control. The goal isn't to declare a winner. It's to make the tradeoffs visible enough that you can make the right choice for your context — whether you're building a solution, evaluating one, or advising a customer on where to place their bets.
+The table above isn't just a reference — it's a map of where intelligence lives in the M365 stack. Each row represents a distinct architectural choice with real tradeoffs in intelligence versus control. The goal isn't to declare a winner. It's to make the tradeoffs visible enough that you can make the right choice for your context — whether you're building a solution, evaluating one, or advising a customer on where to place their bets.
 
 ---
 
 The race for enterprise AI was never really about the model. It was always about what sits between the model and your data — who built that layer, how deep it goes, and on what terms you get to access it. Microsoft has been building that layer for years inside M365, and Work IQ is the point where it becomes fully legible as a strategic asset rather than a marketing claim.
 
-The platforms that will win this market aren't the ones with the best benchmark scores — they're the ones that best represent the meaning of enterprise data: the relationships, constraints, and business logic that make AI actions reliable rather than dangerous. The intelligence spectrum is already here. The question now isn't whether to engage with it — it's where on that spectrum your work should live, and what you're trading to be there.
+The platforms that will win this market aren't the ones with the best benchmark scores — they're the ones that best represent the meaning of enterprise data: the relationships, constraints, and business logic that make AI actions reliable rather than dangerous.
 
-The rest of this series digs into each of those choices, one layer at a time.
+## What Work IQ Actually Delivers
+
+Work IQ is the intelligence layer closest to the user experience. It powers Microsoft 365 Copilot and custom agents by ingesting signals from emails, chats, meetings, and documents, then combining them with memory and inference. This enables:
+
+- **Personalized Memory**: Captures preferences, workflows, and organizational patterns to reduce prompt friction.
+- **Contextual Recommendations**: Suggests next actions and routes tasks to the right agent based on real-time signals.
+- **APIs for Developers**: Exposes Work IQ for building custom agents tailored to enterprise workflows.
+
+In short, Work IQ transforms Copilot from a reactive assistant into a proactive collaborator — one that understands your work chart, not just your org chart. The intelligence spectrum is already here. The question now isn't whether to engage with it — it's where on that spectrum your work should live, and what you're trading to be there.
