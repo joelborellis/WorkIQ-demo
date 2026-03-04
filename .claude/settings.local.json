@@ -21,7 +21,8 @@
       "Bash(cd /c/Projects/2026/WorkIQ-demo/backend && uv run python -c \"\nfrom app.services.retrieval import RetrievalService\nfrom app.routes.copilot import router\nprint\\('All imports OK'\\)\nprint\\('Routes:', [r.path for r in router.routes]\\)\n\" 2>&1)",
       "Bash(cd C:/Projects/2026/WorkIQ-demo/frontend && npm run build 2>&1)",
       "WebFetch(domain:www.daymarksi.com)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "WebSearch"
     ]
   }
 }
