@@ -1,6 +1,6 @@
 # What Microsoft's Work IQ Actually Is — And Why It's the Most Important Thing in Enterprise AI Right Now
 
-*Microsoft has built a semantic intelligence layer on top of M365 that most people selling and evaluating Copilot don't fully understand. This article maps it.*
+*Microsoft has built a semantic intelligence layer within M365 that is worth understanding — whether you're building on it, evaluating it, or deploying it. This article maps what it is and how it works.*
 
 Every major AI lab is racing to build the smartest model. But here's what that race is obscuring: the frontier models are all remarkably good and getting better with each release. They can reason, synthesize, and generate at a level that would have seemed impossible two years ago — and the gaps between them are narrowing fast. So if the model isn't the bottleneck anymore, what is?
 
@@ -62,15 +62,11 @@ Alongside these retrieval and reasoning options sits a broader set of **Agent 36
 
 ## Why This Matters — And Who It's Being Built Against
 
-The most common misread of Work IQ is that Microsoft simply unified a bunch of data sources and gave them a common interface. That misses the point entirely. The semantic index isn't a data aggregation layer — it's a meaning layer. The difference is what makes this access stack more than a technical architecture decision. It's the foundation of Microsoft's most durable competitive advantage in the enterprise AI market.
+The most common misread of Work IQ is that Microsoft simply unified a bunch of data sources and gave them a common interface. That misses the point entirely. The semantic index isn't a data aggregation layer — it's a meaning layer. That distinction matters enormously in a market where every major player — Google, Salesforce, and a wave of AI-native startups — is competing to own the knowledge worker's daily environment.
 
-As every major AI player races to win the knowledge worker — Google with Workspace AI, Salesforce with Agentforce, a dozen AI-native startups targeting vertical workflows — Microsoft's bet is that the depth of organizational context it has accumulated across M365 is something no competitor can replicate quickly. Work IQ isn't a feature. It's a moat.
+What Microsoft has that competitors cannot quickly replicate is the depth of organizational context already accumulated inside M365. Every email, meeting, document, and conversation that flows through the Microsoft 365 environment is contributing to a semantic map of how work actually happens inside that organization. That map gets richer every day, and it's what gives agents built on Work IQ a fundamentally different quality of context to reason over than agents built on platforms that are starting from scratch.
 
-Salesforce's Agentforce is, in a sense, the strongest external validation that the semantic layer thesis is correct. Rather than racing to build a better model, Salesforce spent years quietly building their own semantic layer — the Einstein Data Cloud — a pre-wired ontology of enterprise CRM concepts that gives agents structured meaning, not just data. It works. In head-to-head pilots on CRM-native workflows, agents grounded in that ontology outperform agents doing pure retrieval over unstructured content, regardless of which LLM is running underneath.
-
-The limitation is that Salesforce's semantic layer only understands data that lives inside Salesforce. The moment a business process touches anything outside that ecosystem — a Teams conversation, an email thread, a SharePoint document, an approval chain in another system — the semantic map ends and the agent is back to guessing. It knows what a "closed-won opportunity" means. It doesn't know what your organization's approval chain looks like, what was decided in last Tuesday's Teams call, or which proposal is currently waiting on legal review. Microsoft's bet is the inverse: not a pre-wired ontology for one domain, but a continuously updated semantic map across the full knowledge worker data estate — email, meetings, Teams conversations, SharePoint, calendar, files. Not CRM-shaped intelligence. Organization-shaped intelligence.
-
-Understanding how that layer is constructed — which parts are accessible, at what cost, and with what tradeoffs — matters for anyone building enterprise AI solutions, evaluating them, or selling them.
+Understanding how that layer is constructed — which parts are accessible, at what cost, and what tradeoffs are involved — matters for anyone building enterprise AI solutions, evaluating them, or selling them.
 
 ## Building on the Stack: Choosing the Right API for Your Agent
 
@@ -79,6 +75,8 @@ One of the practical strengths of this stack is that customers building agents a
 Some use cases are best served by working directly with raw M365 data. If your agent needs to read a specific document, query a calendar, or retrieve a structured record, the Graph API gives you precise, predictable access to exactly that data. You own the retrieval logic, you control what gets passed to your model, and there's no intermediary reasoning layer between your agent and the source.
 
 Other use cases benefit from tapping into the semantic layer directly. If your agent needs to understand what's most relevant to a user's current context — surfacing the right documents, conversations, and decisions without knowing exactly where to look — the Copilot Chat API or the Work IQ MCP does that work for you. The agent receives context that has already been filtered and enriched by the same index that powers M365 Copilot, without requiring you to build or maintain that index yourself.
+
+A concrete example of where this combination matters: software development. GitHub Copilot has become an indispensable coding assistant, deeply aware of the repository a developer is working in — the codebase, the patterns, the history. But code doesn't exist in a vacuum. The requirements driving a feature came from a Teams conversation. The decision to deprecate an API was made in a meeting last month. The security constraint a developer needs to know about is buried in a SharePoint policy document. That enterprise context lives entirely outside the repo, and GitHub Copilot alone has no way to reach it. Work IQ, accessible via the Work IQ MCP, bridges that gap — giving a developer's agent the organizational context that surrounds the code: the discussions, decisions, and documents that explain not just what to build, but why. The repo tells the agent what exists. Work IQ tells it what's happening.
 
 The table above maps where each API sits relative to the semantic layer. It's a practical reference for matching the right access pattern to the right use case — not a prescription for one approach over another.
 
