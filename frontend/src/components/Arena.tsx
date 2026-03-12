@@ -1,16 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ROUTES } from '../routeConfig';
 import { sendToRoute, type Attribution } from '../api/copilotApi';
 import {
+  buildWordSet,
   getUniqueWords,
   jaccardSimilarity,
-  buildWordSet,
 } from '../utils/diff';
 import QueryBar from './QueryBar';
 import ResponsePanel, { type PanelStatus } from './ResponsePanel';
 import RaceStatusBar from './RaceStatusBar';
 
 type LayoutMode = 'split' | 'stack' | 'focus';
+
+const LAYOUT_OPTIONS: { id: LayoutMode; label: string }[] = [
+  { id: 'split', label: 'Grid' },
+  { id: 'stack', label: 'Stack' },
+  { id: 'focus', label: 'Focus' },
+];
 
 interface RouteState {
   status: PanelStatus;
@@ -22,8 +28,8 @@ interface RouteState {
 
 function makeIdleStates(): Record<string, RouteState> {
   return Object.fromEntries(
-    ROUTES.map(r => [
-      r.id,
+    ROUTES.map(route => [
+      route.id,
       {
         status: 'idle' as PanelStatus,
         answer: '',
@@ -37,7 +43,11 @@ function makeIdleStates(): Record<string, RouteState> {
 
 export default function Arena() {
   const [query, setQuery] = useState('');
+  const [submittedQuery, setSubmittedQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>(
+    ROUTES.map(route => route.id)
+  );
   const [routeStates, setRouteStates] =
     useState<Record<string, RouteState>>(makeIdleStates);
   const [hasQueried, setHasQueried] = useState(false);
@@ -46,21 +56,61 @@ export default function Arena() {
   const [focusedRouteId, setFocusedRouteId] = useState<string>(
     ROUTES[0]?.id ?? ''
   );
+  const activeRoutes = ROUTES.filter(route => selectedRouteIds.includes(route.id));
+
+  useEffect(() => {
+    if (activeRoutes.some(route => route.id === focusedRouteId)) return;
+    setFocusedRouteId(activeRoutes[0]?.id ?? '');
+  }, [activeRoutes, focusedRouteId]);
+
+  const resetComparison = useCallback(() => {
+    setSubmittedQuery('');
+    setHasQueried(false);
+    setQueryStartTime(null);
+    setRouteStates(makeIdleStates());
+    setIsSubmitting(false);
+  }, []);
+
+  const handleToggleRoute = useCallback(
+    (routeId: string) => {
+      if (isSubmitting) return;
+
+      setSelectedRouteIds(prev => {
+        const isSelected = prev.includes(routeId);
+        if (isSelected && prev.length === 1) return prev;
+
+        const nextIds = isSelected
+          ? prev.filter(id => id !== routeId)
+          : ROUTES.filter(route => prev.includes(route.id) || route.id === routeId).map(
+              route => route.id
+            );
+
+        return nextIds;
+      });
+
+      resetComparison();
+    },
+    [isSubmitting, resetComparison]
+  );
 
   const handleSubmit = useCallback(async () => {
     const trimmed = query.trim();
-    if (!trimmed || isSubmitting) return;
+    if (!trimmed || isSubmitting || activeRoutes.length === 0) return;
 
     const startTime = Date.now();
     setIsSubmitting(true);
     setHasQueried(true);
+    setSubmittedQuery(trimmed);
     setQueryStartTime(startTime);
+    setFocusedRouteId(activeRoutes[0]?.id ?? '');
     setRouteStates(
       Object.fromEntries(
-        ROUTES.map(r => [
-          r.id,
+        ROUTES.map(route => [
+          route.id,
           {
-            status: 'loading' as PanelStatus,
+            status: activeRoutes.some(activeRoute => activeRoute.id === route.id)
+              ? ('loading' as PanelStatus)
+              : ('idle' as PanelStatus),
             answer: '',
             attributions: [],
             latencyMs: null,
@@ -71,11 +121,12 @@ export default function Arena() {
     );
 
     await Promise.allSettled(
-      ROUTES.map(async route => {
+      activeRoutes.map(async route => {
         try {
           const result = await sendToRoute(route.endpoint, {
             question: trimmed,
           });
+
           setRouteStates(prev => ({
             ...prev,
             [route.id]: {
@@ -102,19 +153,15 @@ export default function Arena() {
     );
 
     setIsSubmitting(false);
-  }, [query, isSubmitting]);
+  }, [activeRoutes, isSubmitting, query]);
 
-  const handleNewQuery = useCallback(() => {
+  const handleClearResults = useCallback(() => {
     setQuery('');
-    setHasQueried(false);
-    setQueryStartTime(null);
-    setRouteStates(makeIdleStates());
-    setIsSubmitting(false);
-  }, []);
+    resetComparison();
+  }, [resetComparison]);
 
-  // ── Diff computations ──────────────────────────────────────────────────
-  const completedRoutes = ROUTES.filter(
-    r => routeStates[r.id].status === 'done'
+  const completedRoutes = activeRoutes.filter(
+    route => routeStates[route.id].status === 'done'
   );
 
   const uniqueWordSets: Record<string, Set<string>> = {};
@@ -123,8 +170,8 @@ export default function Arena() {
   if (completedRoutes.length >= 2) {
     for (const route of completedRoutes) {
       const others = completedRoutes
-        .filter(r => r.id !== route.id)
-        .map(r => routeStates[r.id].answer);
+        .filter(otherRoute => otherRoute.id !== route.id)
+        .map(otherRoute => routeStates[otherRoute.id].answer);
       uniqueWordSets[route.id] = getUniqueWords(
         routeStates[route.id].answer,
         others
@@ -133,175 +180,300 @@ export default function Arena() {
 
     for (let i = 0; i < completedRoutes.length; i++) {
       for (let j = i + 1; j < completedRoutes.length; j++) {
-        const a = completedRoutes[i];
-        const b = completedRoutes[j];
+        const routeA = completedRoutes[i];
+        const routeB = completedRoutes[j];
         similarityPairs.push({
-          aName: a.name,
-          bName: b.name,
+          aName: routeA.name,
+          bName: routeB.name,
           score: jaccardSimilarity(
-            buildWordSet(routeStates[a.id].answer),
-            buildWordSet(routeStates[b.id].answer)
+            buildWordSet(routeStates[routeA.id].answer),
+            buildWordSet(routeStates[routeB.id].answer)
           ),
         });
       }
     }
   }
 
-  const totalCompleted = ROUTES.filter(r => {
-    const s = routeStates[r.id].status;
-    return s === 'done' || s === 'error';
+  const totalCompleted = activeRoutes.filter(route => {
+    const status = routeStates[route.id].status;
+    return status === 'done' || status === 'error';
   }).length;
+  const successfulCount = activeRoutes.filter(
+    route => routeStates[route.id].status === 'done'
+  ).length;
+  const errorCount = activeRoutes.filter(
+    route => routeStates[route.id].status === 'error'
+  ).length;
 
-  const statusRoutes = ROUTES.map(r => ({
-    route: r,
-    status: routeStates[r.id].status,
-    latencyMs: routeStates[r.id].latencyMs,
+  const statusRoutes = activeRoutes.map(route => ({
+    route,
+    status: routeStates[route.id].status,
+    latencyMs: routeStates[route.id].latencyMs,
   }));
 
-  // ── Render ──────────────────────────────────────────────────────────────
-  const isFocusMode = layoutMode === 'focus' && ROUTES.length > 1;
-  const focusedRoute = ROUTES.find(r => r.id === focusedRouteId) ?? ROUTES[0];
-  const sidebarRoutes = ROUTES.filter(r => r.id !== focusedRouteId);
+  const isFocusMode = layoutMode === 'focus' && activeRoutes.length > 1;
+  const focusedRoute = activeRoutes.find(route => route.id === focusedRouteId) ?? activeRoutes[0];
+  const sidebarRoutes = activeRoutes.filter(route => route.id !== focusedRouteId);
 
   return (
-    <div className="arena">
-      {/* ── Top controls ── */}
-      <div className="arena-top">
+    <div className="arena-shell">
+      <aside className="arena-sidebar">
+        <section className="sidebar-section">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">Selected endpoints</span>
+            <span className="sidebar-section-value">{activeRoutes.length}</span>
+          </div>
+
+          <div className="route-directory">
+            {activeRoutes.map(route => {
+              const state = routeStates[route.id];
+
+              return (
+                <button
+                  key={route.id}
+                  type="button"
+                  className={`route-directory-item${focusedRouteId === route.id ? ' active' : ''}`}
+                  onClick={() => setFocusedRouteId(route.id)}
+                >
+                  <div className="route-directory-top">
+                    <span
+                      className="route-directory-swatch"
+                      style={{ background: route.color }}
+                    />
+                    <span
+                      className="route-directory-name"
+                      style={{ color: route.color }}
+                    >
+                      {route.name}
+                    </span>
+                    <span className={`route-directory-state state-${state.status}`}>
+                      {state.status}
+                    </span>
+                  </div>
+                  <div className="route-directory-label">{route.label}</div>
+                  <div className="route-directory-meta">
+                    <span>{route.method}</span>
+                    <span>{route.dataSources.length} sources</span>
+                    <span>
+                      {state.latencyMs !== null
+                        ? `${state.latencyMs.toLocaleString()}ms`
+                        : 'waiting'}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="sidebar-section">
+          <div className="sidebar-section-header">
+            <span className="sidebar-section-title">Comparison</span>
+            <span className="sidebar-section-value">
+              {hasQueried ? `${totalCompleted}/${activeRoutes.length}` : 'idle'}
+            </span>
+          </div>
+
+          {!hasQueried ? (
+            <div className="sidebar-note">
+              Submit one prompt to measure latency, inspect source attributions,
+              and highlight endpoint-specific terms in each answer.
+            </div>
+          ) : (
+            <>
+              <div className="prompt-preview">{submittedQuery}</div>
+
+              <div className="comparison-stats">
+                <div className="comparison-stat">
+                  <span className="comparison-stat-label">Completed</span>
+                  <span className="comparison-stat-value">{totalCompleted}</span>
+                </div>
+                <div className="comparison-stat">
+                  <span className="comparison-stat-label">Successful</span>
+                  <span className="comparison-stat-value">{successfulCount}</span>
+                </div>
+                <div className="comparison-stat">
+                  <span className="comparison-stat-label">Errors</span>
+                  <span className="comparison-stat-value">{errorCount}</span>
+                </div>
+              </div>
+
+              {similarityPairs.length > 0 ? (
+                <div className="overlap-list">
+                  {similarityPairs.map(({ aName, bName, score }) => (
+                    <div key={`${aName}-${bName}`} className="overlap-item">
+                      <div className="overlap-item-copy">
+                        <span>{aName}</span>
+                        <span>{bName}</span>
+                      </div>
+                      <div className="overlap-track">
+                        <div
+                          className="overlap-fill"
+                          style={{ width: `${Math.round(score * 100)}%` }}
+                        />
+                      </div>
+                      <span className="overlap-value">
+                        {Math.round(score * 100)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="sidebar-note">
+                  Overlap appears once at least two endpoints finish successfully.
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </aside>
+
+      <section className="arena-stage">
+        <div className="stage-toolbar">
+          <div className="stage-toolbar-copy">
+            <span className="stage-toolbar-title">Workspace</span>
+            <span className="stage-toolbar-meta">
+              {hasQueried
+                ? `${totalCompleted} of ${activeRoutes.length} endpoints have returned`
+                : 'Choose one or more endpoints, then run the same prompt in parallel'}
+            </span>
+          </div>
+
+          <div className="stage-toolbar-actions">
+            {hasQueried && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleClearResults}
+              >
+                Clear results
+              </button>
+            )}
+
+            <div className="view-switch" role="tablist" aria-label="Layout mode">
+              {LAYOUT_OPTIONS.map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={layoutMode === option.id}
+                  className={`view-switch-btn${layoutMode === option.id ? ' active' : ''}`}
+                  onClick={() => setLayoutMode(option.id)}
+                  disabled={option.id === 'focus' && activeRoutes.length <= 1}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <QueryBar
           value={query}
           onChange={setQuery}
           onSubmit={handleSubmit}
+          onToggleRoute={handleToggleRoute}
           isSubmitting={isSubmitting}
           routes={ROUTES}
+          selectedRouteIds={selectedRouteIds}
         />
 
-        {hasQueried && (
+        {hasQueried && activeRoutes.length > 0 ? (
           <RaceStatusBar
             routes={statusRoutes}
             startTime={queryStartTime}
             totalCompleted={totalCompleted}
           />
-        )}
+        ) : null}
 
-        <div className="arena-toolbar">
-          <div className="toolbar-left">
-            {hasQueried && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={handleNewQuery}
-              >
-                ✕ New Query
-              </button>
-            )}
-
-            {similarityPairs.length > 0 && (
-              <div className="similarity-row">
-                <span className="toolbar-label">CONTENT OVERLAP</span>
-                {similarityPairs.map(({ aName, bName, score }) => (
-                  <div key={`${aName}-${bName}`} className="similarity-item">
-                    <span className="similarity-names">
-                      {aName} ↔ {bName}
-                    </span>
-                    <div className="similarity-track">
-                      <div
-                        className="similarity-fill"
-                        style={{ width: `${Math.round(score * 100)}%` }}
-                      />
+        <div className="stage-results">
+          {!hasQueried ? (
+            <div className="arena-welcome">
+              <div className="welcome-panel welcome-panel-manifest">
+                <div className="welcome-section-title">Endpoint manifest</div>
+                <div className="manifest-table">
+                  {activeRoutes.map(route => (
+                    <div key={route.id} className="manifest-row">
+                      <div className="manifest-cell manifest-cell-route">
+                        <span
+                          className="manifest-swatch"
+                          style={{ background: route.color }}
+                        />
+                        <div className="manifest-route-copy">
+                          <span
+                            className="manifest-route-name"
+                            style={{ color: route.color }}
+                          >
+                            {route.name}
+                          </span>
+                          <span className="manifest-route-label">
+                            {route.label}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="manifest-cell">{route.method}</div>
+                      <div className="manifest-cell manifest-cell-sources">
+                        {route.dataSources.join(', ')}
+                      </div>
                     </div>
-                    <span className="similarity-pct">
-                      {Math.round(score * 100)}%
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
 
-          <div className="toolbar-right">
-            <span className="toolbar-label">VIEW</span>
-            {(['split', 'stack', 'focus'] as LayoutMode[]).map(mode => (
-              <button
-                key={mode}
-                className={`mode-btn${layoutMode === mode ? ' active' : ''}`}
-                onClick={() => setLayoutMode(mode)}
-                disabled={mode === 'focus' && ROUTES.length <= 1}
-                title={
-                  mode === 'split' ? 'Side by side' :
-                  mode === 'stack' ? 'Stacked' :
-                  'Focus one panel'
-                }
-              >
-                {mode === 'split' ? '⊞' : mode === 'stack' ? '☰' : '⊡'}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Body ── */}
-      <div className="arena-body">
-        {!hasQueried ? (
-          /* ── Welcome / explain screen ── */
-          <div className="arena-welcome">
-            <div className="welcome-title">
-              Compare <span>M365 APIs</span>
-            </div>
-            <div className="welcome-sub">
-              One question — three APIs respond in parallel — see exactly what
-              each one returns and how the content differs
-            </div>
-
-            <div className="welcome-api-cards">
-              {ROUTES.map(r => (
-                <div
-                  key={r.id}
-                  className="welcome-api-card"
-                  style={{ borderColor: `${r.color}33` }}
-                >
-                  <div className="wac-header">
-                    <div className="wac-dot" style={{ background: r.color }} />
-                    <span className="wac-name" style={{ color: r.color }}>
-                      {r.name}
-                    </span>
+              <div className="welcome-panel welcome-panel-notes">
+                <div className="welcome-section-title">Workspace notes</div>
+                <div className="note-list">
+                  <div className="note-item">
+                    Pick one, two, or all three endpoints before you run the prompt.
                   </div>
-                  <div className="wac-label">{r.label}</div>
-                  <div className="wac-desc">{r.description}</div>
-                  <div className="wac-sources-label">Data sources</div>
-                  <div className="wac-sources">
-                    {r.dataSources.map(src => (
-                      <span
-                        key={src}
-                        className="wac-source-tag"
-                        style={{ borderColor: `${r.color}30`, color: r.color }}
-                      >
-                        {src}
-                      </span>
-                    ))}
+                  <div className="note-item">
+                    Use grid view to compare selected endpoints, or switch to
+                    focus when you need a single reading surface.
+                  </div>
+                  <div className="note-item">
+                    Source links appear below each completed response when the
+                    backend returns them.
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-
-            <div className="welcome-hint">
-              Type a question above and press Enter to compare
+          ) : isFocusMode ? (
+            <div className="focus-layout">
+              <div className="focus-main">
+                {focusedRoute && (
+                  <ResponsePanel
+                    route={focusedRoute}
+                    status={routeStates[focusedRoute.id].status}
+                    answer={routeStates[focusedRoute.id].answer}
+                    attributions={routeStates[focusedRoute.id].attributions}
+                    latencyMs={routeStates[focusedRoute.id].latencyMs}
+                    error={routeStates[focusedRoute.id].error}
+                    uniqueWords={uniqueWordSets[focusedRoute.id] ?? new Set()}
+                  />
+                )}
+              </div>
+              <div className="focus-sidebar">
+                {sidebarRoutes.map(route => (
+                  <ResponsePanel
+                    key={route.id}
+                    route={route}
+                    status={routeStates[route.id].status}
+                    answer={routeStates[route.id].answer}
+                    attributions={routeStates[route.id].attributions}
+                    latencyMs={routeStates[route.id].latencyMs}
+                    error={routeStates[route.id].error}
+                    uniqueWords={uniqueWordSets[route.id] ?? new Set()}
+                    isCompact
+                    onFocus={() => setFocusedRouteId(route.id)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : isFocusMode ? (
-          /* ── Focus layout ── */
-          <div className="focus-layout">
-            <div className="focus-main">
-              <ResponsePanel
-                route={focusedRoute}
-                status={routeStates[focusedRoute.id].status}
-                answer={routeStates[focusedRoute.id].answer}
-                attributions={routeStates[focusedRoute.id].attributions}
-                latencyMs={routeStates[focusedRoute.id].latencyMs}
-                error={routeStates[focusedRoute.id].error}
-                uniqueWords={uniqueWordSets[focusedRoute.id] ?? new Set()}
-              />
-            </div>
-            <div className="focus-sidebar">
-              {sidebarRoutes.map(route => (
+          ) : (
+            <div
+              className={`response-grid response-grid-count-${activeRoutes.length}${layoutMode === 'stack' ? ' layout-stack' : ''}`}
+            >
+              {activeRoutes.map(route => (
                 <ResponsePanel
                   key={route.id}
                   route={route}
@@ -311,32 +483,12 @@ export default function Arena() {
                   latencyMs={routeStates[route.id].latencyMs}
                   error={routeStates[route.id].error}
                   uniqueWords={uniqueWordSets[route.id] ?? new Set()}
-                  isCompact
-                  onFocus={() => setFocusedRouteId(route.id)}
                 />
               ))}
             </div>
-          </div>
-        ) : (
-          /* ── Split / Stack layout ── */
-          <div
-            className={`response-grid${layoutMode === 'stack' ? ' layout-stack' : ''}`}
-          >
-            {ROUTES.map(route => (
-              <ResponsePanel
-                key={route.id}
-                route={route}
-                status={routeStates[route.id].status}
-                answer={routeStates[route.id].answer}
-                attributions={routeStates[route.id].attributions}
-                latencyMs={routeStates[route.id].latencyMs}
-                error={routeStates[route.id].error}
-                uniqueWords={uniqueWordSets[route.id] ?? new Set()}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { backendUrl } from "./authConfig";
 import { LogoutButton } from "./components/LoginButton";
 import Arena from "./components/Arena";
+import { ROUTES } from "./routeConfig";
 
 interface User {
   name: string;
@@ -36,39 +37,49 @@ export default function App() {
   const { user, state } = useAuth();
 
   return (
-    <div className="app">
-      {/* ── Header ── */}
+    <div className="app-shell">
       <header className="app-header">
-        <div className="app-header-brand">
-          <span className="app-logo">
-            Work<span>IQ</span>
-          </span>
-          <span className="app-header-badge">ARENA</span>
+        <div className="app-brand">
+          <div className="app-brand-mark">WI</div>
+          <div className="app-brand-copy">
+            <span className="app-brand-name">WorkIQ Arena</span>
+            <span className="app-brand-meta">
+              Microsoft 365 endpoint comparison workspace
+            </span>
+          </div>
         </div>
 
         <div className="app-header-actions">
+          <span className="app-session-state">
+            {state === "authenticated"
+              ? "Authenticated"
+              : state === "loading"
+                ? "Checking session"
+                : "Signed out"}
+          </span>
           {user && (
-            <span className="app-header-user">
-              {user.name || user.email}
-            </span>
+            <span className="app-header-user">{user.name || user.email}</span>
           )}
           {state === "authenticated" && <LogoutButton />}
           {state === "unauthenticated" && (
-            <a href={`${backendUrl}/auth/login`} className="btn btn-ghost btn-sm">
+            <a
+              href={`${backendUrl}/auth/login`}
+              className="btn btn-secondary btn-sm"
+            >
               Sign in
             </a>
           )}
         </div>
       </header>
 
-      {/* ── Main ── */}
       <main className="app-main">
         {state === "loading" && (
           <div className="loading-screen">
-            <div className="loading-dots">
-              <div className="loading-dot" />
-              <div className="loading-dot" />
-              <div className="loading-dot" />
+            <div className="loading-card">
+              <div className="loading-spinner" />
+              <div className="loading-copy">
+                Loading workspace and validating your session.
+              </div>
             </div>
           </div>
         )}
@@ -77,25 +88,68 @@ export default function App() {
 
         {state === "unauthenticated" && (
           <div className="auth-screen">
-            <div className="auth-card">
-              <div className="auth-logo">
-                Work<span>IQ</span>
-              </div>
-              <div className="auth-tagline">AI Comparison Arena</div>
-              <p className="auth-description">
-                Ask questions about your Microsoft 365 data — emails, meetings,
-                documents, and Teams — and compare responses across multiple AI
-                routes simultaneously.
-              </p>
-              <a
-                href={`${backendUrl}/auth/login`}
-                className="auth-sign-in-btn"
-              >
-                <svg viewBox="0 0 21 21" fill="currentColor" aria-hidden="true">
-                  <path d="M0 0h10v10H0zm11 0h10v10H11zM0 11h10v10H0zm11 0h10v10H11z" />
-                </svg>
-                Sign in with Microsoft
-              </a>
+            <div className="auth-layout">
+              <section className="auth-panel auth-panel-overview">
+                <p className="auth-summary">
+                  One prompt fans out across every configured Microsoft 365
+                  endpoint, with responses rendered side by side for comparison.
+                </p>
+
+                <div className="auth-route-list">
+                  {ROUTES.map((route) => (
+                    <div key={route.id} className="auth-route-card">
+                      <div className="auth-route-top">
+                        <span
+                          className="auth-route-swatch"
+                          style={{ background: route.color }}
+                        />
+                        <div className="auth-route-heading">
+                          <span
+                            className="auth-route-name"
+                            style={{ color: route.color }}
+                          >
+                            {route.name}
+                          </span>
+                          <span className="auth-route-method">
+                            {route.method}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="auth-route-label">{route.label}</p>
+                      <p className="auth-route-description">
+                        {route.description}
+                      </p>
+                      <div className="auth-route-sources">
+                        {route.dataSources.slice(0, 4).map((source) => (
+                          <span key={source} className="auth-source-pill">
+                            {source}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="auth-panel auth-panel-login">
+                <p className="auth-login-text">
+                  Sign in with Microsoft to open the workspace and run the
+                  existing server-backed endpoints against your tenant data.
+                </p>
+                <a
+                  href={`${backendUrl}/auth/login`}
+                  className="auth-sign-in-btn"
+                >
+                  <svg viewBox="0 0 21 21" fill="currentColor" aria-hidden="true">
+                    <path d="M0 0h10v10H0zm11 0h10v10H11zM0 11h10v10H0zm11 0h10v10H11z" />
+                  </svg>
+                  Sign in with Microsoft
+                </a>
+                <p className="auth-login-note">
+                  Authentication remains server-side. The frontend uses the
+                  session cookie already established by the backend.
+                </p>
+              </section>
             </div>
           </div>
         )}

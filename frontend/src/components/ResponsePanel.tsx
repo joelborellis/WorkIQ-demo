@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Attribution } from '../api/copilotApi';
 import type { RouteConfig } from '../routeConfig';
@@ -23,33 +23,33 @@ const SKELETON_WIDTHS = ['82%', '68%', '91%', '55%', '76%', '88%', '43%'];
 function SkeletonLines() {
   return (
     <div className="panel-skeleton">
-      {SKELETON_WIDTHS.map((w, i) => (
+      {SKELETON_WIDTHS.map((width, index) => (
         <div
-          key={i}
+          key={index}
           className="skeleton-line"
-          style={{ width: w, animationDelay: `${i * 0.07}s` }}
+          style={{ width, animationDelay: `${index * 0.07}s` }}
         />
       ))}
     </div>
   );
 }
 
-function useMarkdownComponents(
-  uniqueWords: Set<string>,
-  routeColor: string
-) {
+function useMarkdownComponents(uniqueWords: Set<string>, routeColor: string) {
   const highlightString = useCallback(
     (text: string): React.ReactNode => {
       if (uniqueWords.size === 0) return text;
+
       const tokens = splitIntoTokens(text);
       const hasMatch = tokens.some(
-        t => t.type === 'word' && uniqueWords.has(t.value.toLowerCase())
+        token => token.type === 'word' && uniqueWords.has(token.value.toLowerCase())
       );
+
       if (!hasMatch) return text;
-      return tokens.map((token, i) =>
+
+      return tokens.map((token, index) =>
         token.type === 'word' && uniqueWords.has(token.value.toLowerCase()) ? (
           <mark
-            key={i}
+            key={index}
             style={
               {
                 '--mark-bg': `${routeColor}28`,
@@ -64,21 +64,23 @@ function useMarkdownComponents(
         )
       );
     },
-    [uniqueWords, routeColor]
+    [routeColor, uniqueWords]
   );
 
   const wrapChildren = useCallback(
     (children: React.ReactNode): React.ReactNode => {
       if (typeof children === 'string') return highlightString(children);
+
       if (Array.isArray(children)) {
-        return children.map((child, i) =>
+        return children.map((child, index) =>
           typeof child === 'string' ? (
-            <React.Fragment key={i}>{highlightString(child)}</React.Fragment>
+            <React.Fragment key={index}>{highlightString(child)}</React.Fragment>
           ) : (
             child
           )
         );
       }
+
       return children;
     },
     [highlightString]
@@ -117,17 +119,17 @@ export default function ResponsePanel({
   const isDone = status === 'done';
   const isLoading = status === 'loading';
   const isError = status === 'error';
+  const visibleSources = isCompact ? route.dataSources.slice(0, 2) : route.dataSources;
 
   const mdComponents = useMarkdownComponents(uniqueWords, route.color);
 
   const panelStyle = {
     '--route-color': route.color,
-    '--route-glow': route.glowColor,
     borderColor: isLoading
       ? `${route.color}50`
       : isDone
-      ? `${route.color}28`
-      : undefined,
+        ? `${route.color}28`
+        : undefined,
   } as React.CSSProperties;
 
   return (
@@ -135,13 +137,21 @@ export default function ResponsePanel({
       className={`response-panel status-${status}${isCompact ? ' compact' : ''}`}
       style={panelStyle}
       onClick={isCompact ? onFocus : undefined}
+      onKeyDown={
+        isCompact && onFocus
+          ? event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onFocus();
+              }
+            }
+          : undefined
+      }
       role={isCompact ? 'button' : undefined}
       tabIndex={isCompact ? 0 : undefined}
     >
-      {/* ── Header ── */}
       <div className="panel-header">
         <div className="panel-header-left">
-          {/* Row 1: dot + name + status chip */}
           <div className="panel-name-row">
             <div
               className={`panel-route-dot${isLoading ? ' pulsing' : ''}`}
@@ -153,41 +163,50 @@ export default function ResponsePanel({
             {isLoading && (
               <span className="panel-status-chip loading">QUERYING</span>
             )}
-            {isError && (
-              <span className="panel-status-chip error">ERROR</span>
-            )}
+            {isError && <span className="panel-status-chip error">ERROR</span>}
           </div>
 
-          {/* Row 2: method badge + full API name (hidden in compact mode) */}
-          {!isCompact && (
-            <div className="panel-route-desc">
-              <span
-                className="panel-method-badge"
-                style={{ borderColor: `${route.color}40`, color: route.color }}
-              >
-                {route.method}
-              </span>
-              <span className="panel-route-desc-sep">·</span>
-              <span className="panel-route-label">{route.label}</span>
-            </div>
-          )}
+          <div className="panel-route-desc">
+            <span
+              className="panel-method-badge"
+              style={{ borderColor: `${route.color}40`, color: route.color }}
+            >
+              {route.method}
+            </span>
+            <span className="panel-route-desc-sep">·</span>
+            <span className="panel-route-label">{route.label}</span>
+          </div>
         </div>
 
-        {/* Latency — right-aligned, shown once we have a value */}
-        {latencyMs !== null && (
-          <div className={`panel-latency${isDone ? ' done' : ''}`}>
-            {isDone && <span className="latency-check">✓</span>}
-            {latencyMs.toLocaleString()}ms
-          </div>
+        <div className="panel-meta">
+          {latencyMs !== null && (
+            <div className={`panel-latency${isDone ? ' done' : ''}`}>
+              {isDone && <span className="latency-check">✓</span>}
+              {latencyMs.toLocaleString()}ms
+            </div>
+          )}
+          <div className="panel-source-count">{route.dataSources.length} sources</div>
+        </div>
+      </div>
+
+      <div className="panel-source-strip">
+        {visibleSources.map(source => (
+          <span key={source} className="panel-source-pill">
+            {source}
+          </span>
+        ))}
+        {isCompact && route.dataSources.length > visibleSources.length && (
+          <span className="panel-source-pill muted">
+            +{route.dataSources.length - visibleSources.length}
+          </span>
         )}
       </div>
 
-      {/* ── Body ── */}
       <div className="panel-body">
         {status === 'idle' && (
           <div className="panel-idle">
             <div className="panel-idle-glyph">◎</div>
-            <div className="panel-idle-text">Waiting for query</div>
+            <div className="panel-idle-text">{route.description}</div>
           </div>
         )}
 
@@ -195,25 +214,20 @@ export default function ResponsePanel({
 
         {isDone && answer && (
           <div className="panel-response-text">
-            <ReactMarkdown components={mdComponents}>
-              {answer}
-            </ReactMarkdown>
+            <ReactMarkdown components={mdComponents}>{answer}</ReactMarkdown>
           </div>
         )}
 
-        {isError && error && (
-          <div className="panel-error">⚠ {error}</div>
-        )}
+        {isError && error && <div className="panel-error">⚠ {error}</div>}
       </div>
 
-      {/* ── Attributions ── */}
       {isDone && !isCompact && attributions.length > 0 && (
         <div className="panel-attributions">
           <div className="attributions-label">Sources</div>
           <ul className="attribution-list">
-            {attributions.map((attr, i) =>
+            {attributions.map((attr, index) =>
               attr.url ? (
-                <li key={i}>
+                <li key={index}>
                   <a
                     href={attr.url}
                     target="_blank"
@@ -225,7 +239,7 @@ export default function ResponsePanel({
                   </a>
                 </li>
               ) : (
-                <li key={i}>
+                <li key={index}>
                   <span className="attribution-link no-url">{attr.title}</span>
                 </li>
               )

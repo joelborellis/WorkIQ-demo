@@ -408,8 +408,8 @@ async def main() -> None:
         description="End-to-end test for the WorkIQ /api/v1/graph_api endpoint",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--question", default="project planning",
-                        help="Question / search term (default: 'project planning')")
+    parser.add_argument("--question", default="composer studio update",
+                        help="Question / search term (default: 'composer studio update')")
     parser.add_argument("--cookie",   default="",
                         help='Backend session cookie, e.g. "workiq_session=abc..." (enables Layer 3)')
     parser.add_argument("--url",      default="http://localhost:8000",
