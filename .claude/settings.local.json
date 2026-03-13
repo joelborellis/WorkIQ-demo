@@ -22,7 +22,14 @@
       "Bash(cd C:/Projects/2026/WorkIQ-demo/frontend && npm run build 2>&1)",
       "WebFetch(domain:www.daymarksi.com)",
       "Bash(python:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(cd D:/Projects/WorkIQ-demo && npm create vite@latest frontend-v2 -- --template react-ts 2>&1)",
+      "Bash(cd D:/Projects/WorkIQ-demo/frontend-v2 && npm install react-markdown 2>&1)",
+      "Bash(cd D:/Projects/WorkIQ-demo/frontend-v2 && npx tsc -b 2>&1)",
+      "Bash(cd D:/Projects/WorkIQ-demo/frontend-v2 && timeout 8 npx vite --host 2>&1 || true)",
+      "Bash(ls -la /d/Projects/WorkIQ-demo/frontend/ | grep -E \"\\\\.\\(ts|tsx|json|env|html\\)$\")",
+      "Bash(cd D:/Projects/WorkIQ-demo/frontend-v2 && npx tsc -b --noEmit 2>&1)",
+      "Bash(cd D:/Projects/WorkIQ-demo/frontend-v2 && timeout 8 npx vite 2>&1 || true)"
     ]
   }
 }
